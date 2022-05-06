@@ -5,6 +5,12 @@ import logging
 import logging.handlers
 import platform
 
+DEFAULT = "default"
+MODULES = dict()
+
+def register_module(module_name, logging_level):
+    MODULES[module_name] = logging_level
+
 
 def configure_logging(logger, verbosity):
     loglevel = logging.INFO  # default logging level
@@ -52,9 +58,9 @@ def configure_logging(logger, verbosity):
     # set default loglevel
     logger.setLevel(loglevel)
 
-    # need to think on a good way to add local modules... register them?
-
-    # local modules
-    #logging.getLogger("wekachecker").setLevel(loglevel)
-    #logging.getLogger("wekassh").setLevel(loglevel)
-    #logging.getLogger("paramiko").setLevel(logging.ERROR)
+    # configure registered modules
+    for module, level in MODULES.items():
+        if level == DEFAULT:
+            logging.getLogger(module).setLevel(loglevel)
+        else:
+            logging.getLogger(module).setLevel(level)
