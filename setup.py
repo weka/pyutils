@@ -23,7 +23,7 @@ import versioneer
 
 cmdclass = versioneer.get_cmdclass()
 
-setup(name='pyutils',
+setup(name='wekapyutils',
       version=versioneer.get_version(),
       cmdclass=cmdclass,
       description='Python utility library',
