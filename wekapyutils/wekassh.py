@@ -8,7 +8,7 @@ from logging import getLogger
 import paramiko
 from scp import SCPClient
 
-from sthreads import threaded, default_threader
+from wekautils.sthreads import threaded, default_threader
 
 log = getLogger(__name__)
 
