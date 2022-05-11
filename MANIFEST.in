@@ -1,2 +1,2 @@
 include versioneer.py
-include pyutils/_version.py
+include wekapyutils/_version.py
