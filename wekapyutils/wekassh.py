@@ -118,6 +118,7 @@ class RemoteServer(paramiko.SSHClient):
 
     def run(self, cmd):
         exc = None
+        status = None
         try:
             stdin, stdout, stderr = self.exec_command(cmd, get_pty=True)
             status = stdout.channel.recv_exit_status()
@@ -132,10 +133,7 @@ class RemoteServer(paramiko.SSHClient):
             else:
                 log.debug(f"run: 'status {status}, stdout {len(response)} bytes, stderr {len(error)} bytes")
         except Exception as exc:
-            log.debug(f"run (Exception): '{cmd[:100]}', status {status}, stdout {len(response)} bytes, " +
-                      f"stderr {len(error)} bytes, exception='{exc}'")
-            log.debug(f"stdout is {response[:100]}")
-            log.debug(f"stderr is {error[:100]}")
+            log.debug(f"run (Exception): '{cmd[:100]}', exception='{exc}'")
         self.output = CommandOutput(status, response, error, exc)
         return self.output
 
