@@ -50,6 +50,7 @@ class RemoteServer(paramiko.SSHClient):
 
         self._hostname = hostname
         self.exc = None
+        self.connected = False
         self.hostconfig = self._sshconfig.lookup(self._hostname)
         if "user" in self.hostconfig:
             self.user = self.hostconfig["user"]
@@ -106,6 +107,7 @@ class RemoteServer(paramiko.SSHClient):
                     self.ask_for_credentials()
                 else:
                     return  # bail out if not interactive and error
+            self.connected = True
 
     def close(self):
         self.end_unending()  # kills the fio --server process
@@ -117,6 +119,10 @@ class RemoteServer(paramiko.SSHClient):
             scp.put(source, recursive=True, remote_path=dest)
 
     def run(self, cmd):
+        if self.connected == False:
+            log.error(f'Cannot run command - not connected to host {self._hostname}')
+            self.output = CommandOutput(1,"","",None)
+            return self.output
         exc = None
         status = None
         try:
@@ -134,6 +140,8 @@ class RemoteServer(paramiko.SSHClient):
                 log.debug(f"run: 'status {status}, stdout {len(response)} bytes, stderr {len(error)} bytes")
         except Exception as exc:
             log.debug(f"run (Exception): '{cmd[:100]}', exception='{exc}'")
+            self.output = CommandOutput(1,"","",None)
+            return self.output
         self.output = CommandOutput(status, response, error, exc)
         return self.output
 
