@@ -80,6 +80,14 @@ class RemoteServer():
             scp.put(source, recursive=True, remote_path=dest)
 
     def run(self, cmd):
+        """
+
+        :param cmd:
+        :type cmd:
+        :return:returns a CommandOutput object with the results of the command
+                         and also stores it in self.output
+        :rtype:
+        """
         exc = None
         if not self.connection.is_connected:
             log.error(f'Cannot run command - not connected to host {self._hostname}')
@@ -228,4 +236,7 @@ def pscp(servers, source, dest):
     parallel(servers, RemoteServer.scp, source, dest)
 
 if __name__ == '__main__':
+    test1 = RemoteServer("wms")
+    result = test1.connect()
+    result2 = test1.run("date")
     pass
