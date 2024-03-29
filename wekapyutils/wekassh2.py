@@ -28,6 +28,9 @@ class CommandOutput(object):
         self.stderr = stderr
         self.exception = exception
 
+    def __str__(self):
+        return f"status={self.status}, stdout={self.stdout}, stderr={self.stderr}, exception={self.exception}"
+
 
 class RemoteServer():
     def __init__(self, hostname):
@@ -76,8 +79,9 @@ class RemoteServer():
 
     def scp(self, source, dest):
         log.info(f"copying {source} to {self._hostname}")
-        with SCPClient(self.get_transport()) as scp:
-            scp.put(source, recursive=True, remote_path=dest)
+        self.connection.put(source, dest)
+        #with SCPClient(self.get_transport()) as scp:
+        #    scp.put(source, recursive=True, remote_path=dest)
 
     def run(self, cmd):
         """
@@ -89,12 +93,12 @@ class RemoteServer():
         :rtype:
         """
         exc = None
-        if not self.connection.is_connected:
-            log.error(f'Cannot run command - not connected to host {self._hostname}')
-            self.output = CommandOutput(1,"","",None)
-            return self.output
+        #if not self.connection.is_connected:
+        #    log.error(f'Cannot run command - not connected to host {self._hostname}')
+        #    self.output = CommandOutput(1,"","",None)
+        #    return self.output
         try:
-            result = self.connection.run(cmd)
+            result = self.connection.run(cmd, hide=True)
         except Exception as exc:
             log.debug(f"run (Exception): '{cmd[:100]}', exception='{exc}'")
         self.output = CommandOutput(result.return_code, result.stdout, result.stderr, exc)
@@ -130,10 +134,10 @@ class RemoteServer():
 
     def _linux_to_dict(self, separator):
         output = dict()
-        if self.last_output['status'] != 0:
+        if self.output['status'] != 0:
             log.debug(f"last output = {self.last_output}")
             raise Exception
-        lines = self.last_output['response'].split('\n')
+        lines = self.output['response'].split('\n')
         for line in lines:
             if len(line) != 0:
                 line_split = line.split(separator)
@@ -144,7 +148,7 @@ class RemoteServer():
     def _count_cpus(self):
         """ count up the cpus; 0,1-4,7,etc """
         num_cores = 0
-        cpulist = self.last_output['response'].strip(' \n').split(',')
+        cpulist = self.output['response'].strip(' \n').split(',')
         for item in cpulist:
             if '-' in item:
                 parts = item.split('-')
@@ -169,8 +173,8 @@ class RemoteServer():
 
         if weka:
             self.run('mount | grep wekafs')
-            log.debug(f"{self.last_output}")
-            if len(self.last_output['response']) == 0:
+            log.debug(f"{self.output}")
+            if len(self.output['response']) == 0:
                 log.debug(f"{self._hostname} does not have a weka filesystem mounted.")
                 self.weka_mounted = False
             else:
@@ -180,7 +184,7 @@ class RemoteServer():
         """ see if a file exists on another server """
         log.debug(f"checking for presence of file {path} on server {self._hostname}")
         self.run(f"if [ -f '{path}' ]; then echo 'True'; else echo 'False'; fi")
-        strippedstr = self.last_output['response'].strip(' \n')
+        strippedstr = self.output['response'].strip(' \n')
         log.debug(f"server responded with {strippedstr}")
         if strippedstr == "True":
             return True
@@ -188,14 +192,15 @@ class RemoteServer():
             return False
 
     def last_response(self):
-        return self.last_output['response'].strip(' \n')
+        return self.output
 
     def __str__(self):
         return self._hostname
 
     def run_unending(self, command):
         """ run a command that never ends - needs to be terminated by ^c or something """
-        transport = self.get_transport()
+        #transport = self.get_transport()
+        transport = self.connection.get_transport()
         self.unending_session = transport.open_session()
         self.unending_session.setblocking(0)  # Set to non-blocking mode
         self.unending_session.get_pty()
@@ -239,4 +244,14 @@ if __name__ == '__main__':
     test1 = RemoteServer("wms")
     result = test1.connect()
     result2 = test1.run("date")
+    print(result2)
+    print(result2.stdout)
+    test1.scp("wekassh2.py", "/tmp/wekassh2.py")
+
+    servers = [RemoteServer("wms"), RemoteServer("buckaroo"), RemoteServer("whorfin")]
+    parallel(servers, RemoteServer.run, "hostname")
+    default_threader.run()
+    print("done")
+    for i in servers:
+        print(i.last_response())
     pass

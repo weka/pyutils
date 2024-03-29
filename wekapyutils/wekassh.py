@@ -33,8 +33,8 @@ class RemoteServer(paramiko.SSHClient):
         super().__init__()
         self._sshconfig = paramiko.SSHConfig()
         self._config_file = True
-        self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.load_system_host_keys()
+        self.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         # handle missing config file
         try:
@@ -251,3 +251,6 @@ def pdsh(servers, command):
 def pscp(servers, source, dest):
     log.debug(f"setting up parallel copy to {servers}")
     parallel(servers, RemoteServer.scp, source, dest)
+
+if __name__ == '__main__':
+    pass
