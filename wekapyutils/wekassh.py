@@ -81,7 +81,7 @@ class RemoteServer(paramiko.SSHClient):
 
             if self.user is not None:
                 self.kwargs["username"] = self.user
-            if self.password is not None:
+            if self.password is not None and len(self.password) > 0:
                 self.kwargs["password"] = self.password
 
             # don't give key_filename if they've provided a password
