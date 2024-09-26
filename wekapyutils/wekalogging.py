@@ -48,11 +48,11 @@ def configure_logging(logger, verbosity):
         syslogaddr = "/var/run/syslog"
     else:
         syslogaddr = "/dev/log"
-    syslog_handler = logging.handlers.SysLogHandler(syslogaddr)
-    syslog_handler.setFormatter(logging.Formatter(syslog_format))
+    syslog_handler = logging.handlers.SysLogHandler(facility=logging.handlers.SysLogHandler.LOG_DAEMON, address=syslogaddr)
 
     # add syslog handler to root logger
     if syslog_handler is not None:
+        syslog_handler.setFormatter(logging.Formatter(syslog_format))
         logger.addHandler(syslog_handler)
 
     # set default loglevel
