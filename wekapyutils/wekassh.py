@@ -35,6 +35,7 @@ class CommandOutput(object):
 
 class RemoteServer():
     def __init__(self, hostname):
+        self.kwargs = None
         self.output = None
         #self.connection = fabric.Connection(hostname)
         self.connection = None
@@ -56,26 +57,30 @@ class RemoteServer():
 
     def connect(self):
         success = False
-        self.kwargs = {"forward_agent": True}
+        failures = 0
+        #self.kwargs = {"forward_agent": False}  # this causes problems...
         while not success:
             try:
-                #self.connection = fabric.Connection(self._hostname, forward_agent=True)
                 self.connection = fabric.Connection(self._hostname, **self.kwargs)
-                result = self.connection.open()
+                self.connection.open()
                 self.connected = True
+                success = True
             except gaierror as exc:
                 log.error(f"Error connecting to {self._hostname}: hostname not found")
                 self.connected = False
                 return
             except Exception as exc:
                 log.error(f"Error connecting to {self._hostname}: {exc}")
-                self.user = self.connection.user
-                self.ask_for_credentials()
-                connect_kwargs = {"password": self.password, "key_filename": []}
-                del self.connection
-                self.connection = fabric.Connection(self._hostname, user=self.user, connect_kwargs=connect_kwargs)
-                result = self.connection.open()
-            return self.connection
+                failures += 1
+                if getattr(self, "___interactive", True) and failures <= 3:
+                    log.info(f"trying to connect to {self._hostname} interactively")
+                    self.user = self.connection.user
+                    self.ask_for_credentials()
+                    self.kwargs = {"user": self.user, "password": self.password, "key_filename": []}
+                    del self.connection
+                else:
+                    log.error(f"Failure to log into {self._hostname}")
+        return
 
     def close(self):
         self.end_unending()  # kills the fio --server process
