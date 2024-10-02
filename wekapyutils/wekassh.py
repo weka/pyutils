@@ -55,9 +55,9 @@ class RemoteServer():
         print()
         # return (user, password)
 
-    def connect(self):
+    def connect(self, forward_agent=False):
         failures = 0
-        self.kwargs = {"forward_agent": True}  # this causes problems...
+        self.kwargs = {"forward_agent": forward_agent}
         while True:
             try:
                 self.connection = fabric.Connection(self._hostname, **self.kwargs)
