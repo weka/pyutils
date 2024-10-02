@@ -35,7 +35,7 @@ class CommandOutput(object):
 
 class RemoteServer():
     def __init__(self, hostname):
-        self.kwargs = None
+        self.kwargs = dict()
         self.output = None
         #self.connection = fabric.Connection(hostname)
         self.connection = None
@@ -56,15 +56,17 @@ class RemoteServer():
         # return (user, password)
 
     def connect(self):
-        success = False
         failures = 0
-        #self.kwargs = {"forward_agent": False}  # this causes problems...
-        while not success:
+        self.kwargs = {"forward_agent": True}  # this causes problems...
+        while True:
             try:
                 self.connection = fabric.Connection(self._hostname, **self.kwargs)
                 self.connection.open()
                 self.connected = True
-                success = True
+                self.user = self.connection.user
+                if getattr(self.connection, 'password', None) is not None:
+                    self.password = self.connection.password
+                return
             except gaierror as exc:
                 log.error(f"Error connecting to {self._hostname}: hostname not found")
                 self.connected = False
@@ -74,7 +76,6 @@ class RemoteServer():
                 failures += 1
                 if getattr(self, "___interactive", True) and failures <= 3:
                     log.info(f"trying to connect to {self._hostname} interactively")
-                    self.user = self.connection.user
                     self.ask_for_credentials()
                     self.kwargs = {"user": self.user, "password": self.password, "key_filename": []}
                     del self.connection
@@ -234,7 +235,9 @@ if __name__ == '__main__':
     result2 = test1.run("date")
     print(result2)
     print(result2.stdout)
-    test1.scp("wekassh2.py", "/tmp/wekassh2.py")
+    test1.scp("wekapyutils/wekassh.py", "/tmp/wekassh.py")
+    result = test1.run("ls -l /tmp/wekassh.py")
+    print(result.stdout)
 
     servers = [RemoteServer("wms"), RemoteServer("buckaroo"), RemoteServer("whorfin")]
     parallel(servers, RemoteServer.connect)
