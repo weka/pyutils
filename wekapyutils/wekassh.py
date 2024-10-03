@@ -7,6 +7,8 @@ from _socket import gaierror
 from logging import getLogger
 
 import fabric
+from fabric import OpenSSHAuthStrategy
+
 #import paramiko
 #from scp import SCPClient
 
@@ -41,9 +43,12 @@ class RemoteServer():
         self.connection = None
         self._hostname = hostname
         self.exc = None
-        self.user = ""
+        self.user = None
         self.password = ""
         self.connected = False
+
+        self.config = fabric.Config(overrides={'authentication': {'strategy_class': OpenSSHAuthStrategy}})
+        #c = Connection('hostname', config=config)
 
     def ask_for_credentials(self):
         print(f"Enter credentials for server {self._hostname}:")
@@ -57,10 +62,18 @@ class RemoteServer():
 
     def connect(self, forward_agent=False):
         failures = 0
-        self.kwargs = {"forward_agent": forward_agent}
+        #self.kwargs = {"forward_agent": forward_agent}
         while True:
+            if self.password is not None:
+                self.config = fabric.Config()   # reset the config to clear the auth strategy
+                self.kwargs["password"] = self.password
             try:
-                self.connection = fabric.Connection(self._hostname, **self.kwargs)
+                #self.connection = fabric.Connection(self._hostname, forward_agent=forward_agent, connect_kwargs=self.kwargs)
+                self.connection = fabric.Connection(host=self._hostname,
+                                                    user=self.user,
+                                                    connect_timeout=10,
+                                                    connect_kwargs=self.kwargs,
+                                                    config=self.config)
                 self.connection.open()
                 self.connected = True
                 self.user = self.connection.user
@@ -75,10 +88,11 @@ class RemoteServer():
                 log.error(f"Error connecting to {self._hostname}: {exc}")
                 failures += 1
                 if getattr(self, "___interactive", True) and failures <= 3:
+                    self.config = fabric.Config()
                     log.info(f"trying to connect to {self._hostname} interactively")
                     self.ask_for_credentials()
-                    self.kwargs = {"user": self.user, "password": self.password, "key_filename": []}
-                    del self.connection
+                    self.kwargs = {"password": self.password, "key_filename": []}
+                    #del self.connection
                 else:
                     log.error(f"Failure to log into {self._hostname}")
         return
@@ -189,7 +203,7 @@ class RemoteServer():
     def run_unending(self, command):
         """ run a command that never ends - needs to be terminated by ^c or something """
         #transport = self.get_transport()
-        transport = self.connection.get_transport()
+        transport = self.connection.client.get_transport()
         self.unending_session = transport.open_session()
         self.unending_session.setblocking(0)  # Set to non-blocking mode
         self.unending_session.get_pty()
@@ -204,6 +218,11 @@ class RemoteServer():
         log.debug(f"terminating daemon {self.unending_session.command}")
         self.unending_session.send(chr(3))  # send a ^C
         self.unending_session.close()
+
+    def invoke_shell(self):
+        """ invoke a shell on the remote server. Use self.shell.close() to terminate it """
+        self.shell = self.connection.client.invoke_shell()
+        return self.shell
 
 
 @threaded
@@ -230,11 +249,27 @@ def pscp(servers, source, dest):
     parallel(servers, RemoteServer.scp, source, dest)
 
 if __name__ == '__main__':
-    test1 = RemoteServer("wms")
+    import sys, time, logging
+    log.setLevel("DEBUG")
+    console_format = "%(filename)s:%(lineno)s:%(funcName)s():%(levelname)s:%(message)s"
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(console_format))
+    log.addHandler(console_handler)
+
+    test1 = RemoteServer("172.29.7.237")
+    test1.user = "root"
+    test1.password = "WekaService"
     result = test1.connect()
-    result2 = test1.run("date")
-    print(result2)
-    print(result2.stdout)
+    shell = test1.invoke_shell()
+    time.sleep(0.5)
+    output = shell.recv(500).strip().decode("utf-8")
+    print(f"output received from shell: {output}")
+    shell.close()
+
+    sys.exit()
+    # result2 = test1.run("exit")
+    #print(result2)
+    # print(result2.stdout)
     test1.scp("wekapyutils/wekassh.py", "/tmp/wekassh.py")
     result = test1.run("ls -l /tmp/wekassh.py")
     print(result.stdout)
