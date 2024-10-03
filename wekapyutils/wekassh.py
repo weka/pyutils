@@ -74,6 +74,10 @@ class RemoteServer():
                                                     connect_timeout=10,
                                                     connect_kwargs=self.kwargs,
                                                     config=self.config)
+                if 'password' in self.kwargs:
+                    # if we're using a password, we don't want to use a keyfile - fabric sometimes sticks one in there
+                    if 'key_filename' in self.connection.connect_kwargs:
+                        del self.connection.connect_kwargs['key_filename']
                 self.connection.open()
                 self.connected = True
                 self.user = self.connection.user
