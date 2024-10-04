@@ -44,7 +44,7 @@ class RemoteServer():
         self._hostname = hostname
         self.exc = None
         self.user = None
-        self.password = ""
+        self.password = None
         self.connected = False
 
         self.config = fabric.Config(overrides={'authentication': {'strategy_class': OpenSSHAuthStrategy}})
@@ -64,7 +64,7 @@ class RemoteServer():
         failures = 0
         #self.kwargs = {"forward_agent": forward_agent}
         while True:
-            if self.password is not None:
+            if self.password is not None and len(self.password) > 0:
                 self.config = fabric.Config()   # reset the config to clear the auth strategy
                 self.kwargs["password"] = self.password
             try:
