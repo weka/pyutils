@@ -102,7 +102,8 @@ class RemoteServer():
         return
 
     def close(self):
-        self.end_unending()  # kills the fio --server process
+        if getattr(self, 'unending_session', None) is not None:
+            self.end_unending()  # kills the fio --server process
         self.connection.close()
         #super().close()
         
@@ -141,10 +142,10 @@ class RemoteServer():
 
     def _linux_to_dict(self, separator):
         output = dict()
-        if self.output['status'] != 0:
+        if self.output.status != 0:
             log.debug(f"last output = {self.output}")
             raise Exception
-        lines = self.output['response'].split('\n')
+        lines = self.output.stdout.splitlines()
         for line in lines:
             if len(line) != 0:
                 line_split = line.split(separator)
@@ -181,7 +182,7 @@ class RemoteServer():
         if weka:
             self.run('mount | grep wekafs')
             log.debug(f"{self.output}")
-            if len(self.output['response']) == 0:
+            if len(self.output.stdout) == 0:
                 log.debug(f"{self._hostname} does not have a weka filesystem mounted.")
                 self.weka_mounted = False
             else:
@@ -191,7 +192,7 @@ class RemoteServer():
         """ see if a file exists on another server """
         log.debug(f"checking for presence of file {path} on server {self._hostname}")
         self.run(f"if [ -f '{path}' ]; then echo 'True'; else echo 'False'; fi")
-        strippedstr = self.output['response'].strip(' \n')
+        strippedstr = self.output.stdout.strip(' \n')
         log.debug(f"server responded with {strippedstr}")
         if strippedstr == "True":
             return True
@@ -199,7 +200,7 @@ class RemoteServer():
             return False
 
     def last_response(self):
-        return self.output
+        return self.output.stdout
 
     def __str__(self):
         return self._hostname
@@ -207,7 +208,7 @@ class RemoteServer():
     def run_unending(self, command):
         """ run a command that never ends - needs to be terminated by ^c or something """
         #transport = self.get_transport()
-        transport = self.connection.client.get_transport()
+        transport = self.get_transport()
         self.unending_session = transport.open_session()
         self.unending_session.setblocking(0)  # Set to non-blocking mode
         self.unending_session.get_pty()
@@ -219,9 +220,10 @@ class RemoteServer():
         self.unending_session.send(command + '\n')
 
     def end_unending(self):
-        log.debug(f"terminating daemon {self.unending_session.command}")
-        self.unending_session.send(chr(3))  # send a ^C
-        self.unending_session.close()
+        if getattr(self, 'unending_session', None) is not None:
+            log.debug(f"terminating daemon {self.unending_session.command}")
+            self.unending_session.send(chr(3))  # send a ^C
+            self.unending_session.close()
 
     def invoke_shell(self):
         """ invoke a shell on the remote server. Use self.shell.close() to terminate it """
