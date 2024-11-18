@@ -184,7 +184,7 @@ class RemoteServer():
 
         self.run("stat -fc %T /sys/fs/cgroup")
         self.is_cgroupsv1 = self.output.stdout.strip() in CGROUP_V1_FILESYSTEMS
-        self.is_cgroupsv2 =  self.output.stdout.strip() in CGROUP_V2_FILESYSTEMS
+        self.is_cgroupsv2 = self.output.stdout.strip() in CGROUP_V2_FILESYSTEMS
         log.debug(f"RemoteServer {self._hostname} is_cgroupsv1: {self.is_cgroupsv1} is_cgroupsv2: {self.is_cgroupsv2}")
 
         if self.is_cgroupsv1:
@@ -248,6 +248,7 @@ class RemoteServer():
         """ invoke a shell on the remote server. Use self.shell.close() to terminate it """
         self.shell = self.connection.client.invoke_shell()
         return self.shell
+
 
 @threaded
 def threaded_method(instance, method, *args, **kwargs):
