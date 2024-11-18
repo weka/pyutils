@@ -46,6 +46,8 @@ class RemoteServer():
         self.user = None
         self.password = None
         self.connected = False
+        self.is_cgroupsv1 = False
+        self.is_cgroupsv2 = False
 
         self.config = fabric.Config(overrides={'authentication': {'strategy_class': OpenSSHAuthStrategy}})
         #c = Connection('hostname', config=config)
@@ -176,8 +178,25 @@ class RemoteServer():
         self.run("cat /etc/os-release")
         self.os_info = self._linux_to_dict('=')
 
-        self.run("cat /sys/fs/cgroup/cpuset/system/cpuset.cpus")
-        self.usable_cpus = self._count_cpus()
+        #handle different cgroup configs
+        CGROUP_V1_FILESYSTEMS = {"tmpfs", "cgroup"}
+        CGROUP_V2_FILESYSTEMS = {"cgroup2fs"}
+
+        self.run("stat -fc %T /sys/fs/cgroup")
+        self.is_cgroupsv1 = self.output.stdout.strip() in CGROUP_V1_FILESYSTEMS
+        self.is_cgroupsv2 =  self.output.stdout.strip() in CGROUP_V2_FILESYSTEMS
+        log.debug(f"RemoteServer {self._hostname} is_cgroupsv1: {self.is_cgroupsv1} is_cgroupsv2: {self.is_cgroupsv2}")
+
+        if self.is_cgroupsv1:
+            self.run("cat /sys/fs/cgroup/cpuset/system/cpuset.cpus")
+            self.usable_cpus = self._count_cpus()
+        elif self.is_cgroupsv2:
+            self.run("cat /sys/fs/cgroup/cpuset.cpus.effective")
+            self.usable_cpus = self._count_cpus()
+        else:
+            log.warn(f"Unable to determine online CPUs")
+            self.usable_cpus = 0
+        #self.usable_cpus = self._count_cpus()
 
         if weka:
             self.run('mount | grep wekafs')
@@ -229,7 +248,6 @@ class RemoteServer():
         """ invoke a shell on the remote server. Use self.shell.close() to terminate it """
         self.shell = self.connection.client.invoke_shell()
         return self.shell
-
 
 @threaded
 def threaded_method(instance, method, *args, **kwargs):
