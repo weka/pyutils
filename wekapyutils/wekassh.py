@@ -117,6 +117,9 @@ class RemoteServer():
         return self.connection.transport
 
     def scp(self, source, dest):
+        if not self.connected:
+            log.error(f'Cannot scp - not connected to host {self._hostname}')
+            return
         log.info(f"copying {source} to {self._hostname}")
         self.connection.put(source, dest)
 
@@ -129,7 +132,7 @@ class RemoteServer():
                          and also stores it in self.output
         :rtype:
         """
-        if self.connection is None:
+        if not self.connected:
             log.error(f'Cannot run command - not connected to host {self._hostname}')
             return
         try:
@@ -173,6 +176,9 @@ class RemoteServer():
 
     def gather_facts(self, weka):
         """ build a dict from the output of lscpu """
+        if not self.connected:
+            log.error(f'Cannot gather facts - not connected to host {self._hostname}')
+            return
         self.cpu_info = dict()
         self.run("lscpu")
 
@@ -230,6 +236,9 @@ class RemoteServer():
 
     def run_unending(self, command):
         """ run a command that never ends - needs to be terminated by ^c or something """
+        if not self.connected:
+            log.error(f'Cannot run_unending command - not connected to host {self._hostname}')
+            return
         #transport = self.get_transport()
         transport = self.get_transport()
         self.unending_session = transport.open_session()
@@ -250,6 +259,9 @@ class RemoteServer():
 
     def invoke_shell(self):
         """ invoke a shell on the remote server. Use self.shell.close() to terminate it """
+        if not self.connected:
+            log.error(f'Cannot invoke_shell - not connected to host {self._hostname}')
+            return
         self.shell = self.connection.client.invoke_shell()
         return self.shell
 
