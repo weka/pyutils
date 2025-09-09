@@ -85,11 +85,14 @@ class RemoteServer():
                 self.user = self.connection.user
                 if getattr(self.connection, 'password', None) is not None:
                     self.password = self.connection.password
-                return
+                break
             except gaierror as exc:
                 log.error(f"Error connecting to {self._hostname}: hostname not found")
                 self.connected = False
-                return
+                break
+            except TimeoutError:
+                log.error(f"Error connecting to {self._hostname}: timed out")
+                break
             except Exception as exc:
                 log.error(f"Error connecting to {self._hostname}: {exc}")
                 failures += 1
@@ -101,6 +104,7 @@ class RemoteServer():
                     #del self.connection
                 else:
                     log.error(f"Failure to log into {self._hostname}")
+                    break
         return
 
     def close(self):
@@ -281,10 +285,14 @@ if __name__ == '__main__':
     console_handler.setFormatter(logging.Formatter(console_format))
     log.addHandler(console_handler)
 
-    test1 = RemoteServer("172.29.7.237")
+    #test1 = RemoteServer("172.29.0.65")
+    test1 = RemoteServer("172.16.1.65")
     test1.user = "root"
     test1.password = "WekaService"
     result = test1.connect()
+    if not test1.connected:
+        log.error("Connection failed")
+        sys.exit(1)
     shell = test1.invoke_shell()
     time.sleep(0.5)
     output = shell.recv(500).strip().decode("utf-8")
