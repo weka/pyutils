@@ -3,6 +3,7 @@
 #
 import logging
 import logging.handlers
+import os
 import platform
 
 DEFAULT = "default"
@@ -48,12 +49,20 @@ def configure_logging(logger, verbosity):
         syslogaddr = "/var/run/syslog"
     else:
         syslogaddr = "/dev/log"
-    syslog_handler = logging.handlers.SysLogHandler(facility=logging.handlers.SysLogHandler.LOG_DAEMON, address=syslogaddr)
 
-    # add syslog handler to root logger
-    if syslog_handler is not None:
-        syslog_handler.setFormatter(logging.Formatter(syslog_format))
-        logger.addHandler(syslog_handler)
+    try:
+        _ = os.stat(syslogaddr)
+    except Exception as exc:
+        logger.warning(f"syslog not found: {syslogaddr}:{exc}")
+        syslogaddr = None
+
+    if syslogaddr is not None:
+        syslog_handler = logging.handlers.SysLogHandler(facility=logging.handlers.SysLogHandler.LOG_DAEMON, address=syslogaddr)
+
+        # add syslog handler to root logger
+        if syslog_handler is not None:
+            syslog_handler.setFormatter(logging.Formatter(syslog_format))
+            logger.addHandler(syslog_handler)
 
     # set default loglevel
     logger.setLevel(loglevel)
