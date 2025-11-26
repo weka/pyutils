@@ -38,7 +38,7 @@ setup(name='wekapyutils',
                         '*.tests', '*.tests.*')
       ),
       install_requires=[
-          'paramiko>=2.10.4', 'scp>=0.14.4', 'python-dateutil>=2.8.2', 'cryptography>=45.0.7', 'fabric>=3.2.2',
+          'paramiko>=2.10.4', 'scp>=0.14.4', 'python-dateutil>=2.8.2', 'cryptography>=43.0.0', 'fabric>=3.2.2',
       ],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
